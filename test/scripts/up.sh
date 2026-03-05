@@ -3,11 +3,17 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 TEST_DIR="$ROOT_DIR/test"
+SUT_DIR="$ROOT_DIR/sut"
 ENV_FILE="$TEST_DIR/.env"
+SUT_ENV_FILE="$SUT_DIR/.env"
 COMPOSE_FILE="$TEST_DIR/docker-compose.integration.yml"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   cp "$TEST_DIR/.env.example" "$ENV_FILE"
+fi
+
+if [[ ! -f "$SUT_ENV_FILE" ]]; then
+  cp "$SUT_DIR/.env.example" "$SUT_ENV_FILE"
 fi
 
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build

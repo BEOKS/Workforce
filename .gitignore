@@ -1,4 +1,5 @@
 # Test workspace artifacts
 test/node_modules/
 test/.env
+sut/.env
 test/reports/

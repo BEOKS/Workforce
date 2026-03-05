@@ -4,6 +4,8 @@ services:
   sut:
     build:
       context: ../sut
+    env_file:
+      - ../sut/.env
     image: workforce-sut:it
     container_name: workforce-it-sut
     environment:
