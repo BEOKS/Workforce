@@ -17,8 +17,8 @@ const required = (name: string, fallback?: string): string => {
 
 export const config = {
   sutBaseUrl: required('SUT_BASE_URL', 'http://localhost:8080'),
-  openProjectBaseUrl: required('OPENPROJECT_BASE_URL', 'http://localhost:8081'),
   mockServerBaseUrl: required('MOCKSERVER_BASE_URL', 'http://localhost:1080'),
+  ticketPlatformBaseUrl: process.env.TICKET_PLATFORM_BASE_URL ?? process.env.MOCKSERVER_BASE_URL ?? 'http://localhost:1080',
   requestTimeoutMs: Number(required('REQUEST_TIMEOUT_MS', '15000')),
   paths: {
     health: required('SUT_HEALTH_PATH', '/healthz'),
@@ -26,7 +26,9 @@ export const config = {
     getEligibility: required('SUT_GET_ELIGIBILITY_PATH', '/v1/tickets/{ticketId}/eligibility'),
     postInspectionAnswer: required('SUT_POST_INSPECTION_ANSWER_PATH', '/v1/tickets/{ticketId}/inspection/answers'),
     triggerExecution: required('SUT_TRIGGER_EXECUTION_PATH', '/v1/tickets/{ticketId}/execute'),
-    getStatus: required('SUT_GET_STATUS_PATH', '/v1/tickets/{ticketId}/status')
+    getStatus: required('SUT_GET_STATUS_PATH', '/v1/tickets/{ticketId}/status'),
+    getIngestionStatus: required('SUT_GET_INGESTION_STATUS_PATH', '/v1/ingestion/status'),
+    getPlatformTicket: required('SUT_GET_PLATFORM_TICKET_PATH', '/v1/platform/tickets/{platformTicketId}')
   }
 };
 

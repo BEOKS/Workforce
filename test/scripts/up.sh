@@ -12,8 +12,8 @@ fi
 
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build
 
-bash "$TEST_DIR/scripts/wait-for.sh" "http://localhost:${MOCKSERVER_PORT:-1080}/mockserver/status" 90 2
-bash "$TEST_DIR/scripts/wait-for.sh" "http://localhost:${OPENPROJECT_PORT:-8081}/health_checks/default" 300 5
+bash "$TEST_DIR/scripts/wait-for.sh" "http://localhost:${MOCKSERVER_PORT:-1080}/" 90 2 any
+bash "$TEST_DIR/scripts/wait-for.sh" "http://localhost:${MOCKSERVER_PORT:-1080}/platform/health" 60 2
 bash "$TEST_DIR/scripts/wait-for.sh" "http://localhost:${SUT_PORT:-8080}/healthz" 180 3
 
 MOCKSERVER_BASE_URL="http://localhost:${MOCKSERVER_PORT:-1080}" \

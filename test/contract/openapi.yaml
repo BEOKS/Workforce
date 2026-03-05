@@ -131,6 +131,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /v1/ingestion/status:
+    get:
+      operationId: getIngestionStatus
+      responses:
+        '200':
+          description: Current ingestion mode and polling health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionStatusResponse'
+  /v1/platform/tickets/{platformTicketId}:
+    get:
+      operationId: getPlatformTicket
+      parameters:
+        - in: path
+          name: platformTicketId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ingested local ticket for given platform ticket id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlatformTicketResponse'
+        '404':
+          description: Platform ticket not ingested
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
 components:
   schemas:
@@ -209,6 +241,50 @@ components:
       type: object
       required: [state]
       properties:
+        state:
+          type: string
+          enum:
+            - NEW
+            - TRIAGE_PENDING
+            - TRIAGE_DONE
+            - INSPECTION_QA
+            - INSPECTION_APPROVAL
+            - READY_TO_ASSIGN
+            - DECOMPOSING
+            - QUEUED
+            - RUNNING
+            - RETRYING
+            - ESCALATED
+            - DONE
+        updatedAt:
+          type: string
+          format: date-time
+
+    IngestionStatusResponse:
+      type: object
+      required: [webhookEnabled, pollingEnabled, pollIntervalMs, ingestedCount]
+      properties:
+        webhookEnabled:
+          type: boolean
+        pollingEnabled:
+          type: boolean
+        pollIntervalMs:
+          type: integer
+        lastPollAt:
+          type: string
+          format: date-time
+          nullable: true
+        ingestedCount:
+          type: integer
+
+    PlatformTicketResponse:
+      type: object
+      required: [platformTicketId, ticketId, state, updatedAt]
+      properties:
+        platformTicketId:
+          type: string
+        ticketId:
+          type: string
         state:
           type: string
           enum:

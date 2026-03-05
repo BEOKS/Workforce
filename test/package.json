@@ -5,6 +5,7 @@
   "description": "Black-box integration test harness for workforce orchestration",
   "scripts": {
     "bdd": "cucumber-js --config cucumber.js",
+    "report:html": "node ./scripts/generate-report.js",
     "typecheck": "tsc --noEmit",
     "up": "bash ./scripts/up.sh",
     "run": "bash ./scripts/run.sh",
@@ -17,6 +18,7 @@
     "ajv-formats": "^3.0.1",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
+    "multiple-cucumber-html-reporter": "^3.9.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2",
     "yaml": "^2.6.1"

@@ -2,6 +2,67 @@
   {
     "httpRequest": {
       "method": "GET",
+      "path": "/platform/health"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "status": "ok",
+        "adapter": "mock-ticket-platform",
+        "specVersion": "1.1"
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/ticket-platform/v1/capabilities"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "supportsLabels": true,
+        "supportsAttachments": true,
+        "supportsStateTransition": true,
+        "supportsThreadedComments": true,
+        "supportsCustomFields": true
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/ticket-platform/v1/tickets/updated"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-qa",
+          "boardId": "board-alpha",
+          "ticketId": "op-poll-1001",
+          "title": "Polled ticket from platform feed",
+          "description": "Created on platform without webhook",
+          "requester": "platform-user",
+          "labels": ["polling"],
+          "grant_ref_ids": ["gr_figma_read"]
+        }
+      ]
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
       "path": "/gitlab/api/v4/projects/42"
     },
     "httpResponse": {

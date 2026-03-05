@@ -38,3 +38,39 @@ Feature: Inspection Q/A loop for missing information
     Then the HTTP status should be 200
     And the response should match OpenAPI operation "postInspectionAnswer" with status 200
     And response field "accepted" should equal "true"
+
+  Scenario: Eligibility can be checked again after inspection answers are collected
+    Given the SUT health endpoint is reachable
+    And the ticket payload:
+      """
+      {
+        "title": "Clarify integration requirements",
+        "description": "",
+        "requester": "frank",
+        "labels": ["inspection"],
+        "grant_ref_ids": ["gr_confluence_read"]
+      }
+      """
+    When I submit the ticket to SUT
+    Then the HTTP status should be 201
+    And the response should match OpenAPI operation "createTicket" with status 201
+    When I capture ticket id from response
+    Given the inspection answers:
+      """
+      {
+        "api_scope": "read-only",
+        "target_repo": "platform/workforce"
+      }
+      """
+    When I post inspection answers for the created ticket
+    Then the HTTP status should be 200
+    And the response should match OpenAPI operation "postInspectionAnswer" with status 200
+    And response field "accepted" should equal "true"
+    When I request eligibility for the created ticket
+    Then the HTTP status should be 200
+    And the response should match OpenAPI operation "getEligibility" with status 200
+    And response field "decision" should be one of:
+      """
+      requires_inspection
+      ai_processable
+      """

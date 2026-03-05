@@ -4,8 +4,10 @@ import {
   createTicket,
   extractTicketId,
   getEligibility,
-  getOpenProjectHealth,
+  getIngestionStatus,
+  getPlatformTicket,
   getSutHealth,
+  getTicketPlatformHealth,
   getTicketStatus,
   postInspectionAnswers,
   triggerExecution,
@@ -16,15 +18,15 @@ import { validateResponseByOperation } from '../support/contract-validator';
 import type { IntegrationWorld } from '../support/world';
 
 Given('the SUT health endpoint is reachable', async function (this: IntegrationWorld) {
-  this.lastResponse = await getSutHealth();
+  this.lastResponse = await getSutHealth(this);
   assertStatus(this.lastResponse.status, 200);
   validateResponseByOperation('getHealth', 200, this.lastResponse.data);
 });
 
-Given('OpenProject is reachable', async function (this: IntegrationWorld) {
-  this.lastResponse = await getOpenProjectHealth();
+Given('Ticket platform is reachable', async function (this: IntegrationWorld) {
+  this.lastResponse = await getTicketPlatformHealth(this);
   if (this.lastResponse.status >= 500) {
-    throw new Error(`OpenProject health check failed: ${this.lastResponse.status}`);
+    throw new Error(`ticket platform health check failed: ${this.lastResponse.status}`);
   }
 });
 
@@ -38,7 +40,7 @@ Given('the inspection answers:', function (this: IntegrationWorld, docString: st
 
 When('I submit the ticket to SUT', async function (this: IntegrationWorld) {
   assert.ok(this.ticketPayload, 'ticket payload is not set');
-  this.lastResponse = await createTicket(this.ticketPayload);
+  this.lastResponse = await createTicket(this, this.ticketPayload);
 });
 
 When('I capture ticket id from response', function (this: IntegrationWorld) {
@@ -48,23 +50,31 @@ When('I capture ticket id from response', function (this: IntegrationWorld) {
 
 When('I request eligibility for the created ticket', async function (this: IntegrationWorld) {
   assert.ok(this.ticketId, 'ticket id is not set');
-  this.lastResponse = await getEligibility(this.ticketId);
+  this.lastResponse = await getEligibility(this, this.ticketId);
 });
 
 When('I post inspection answers for the created ticket', async function (this: IntegrationWorld) {
   assert.ok(this.ticketId, 'ticket id is not set');
   assert.ok(this.inspectionAnswers, 'inspection answers are not set');
-  this.lastResponse = await postInspectionAnswers(this.ticketId, this.inspectionAnswers);
+  this.lastResponse = await postInspectionAnswers(this, this.ticketId, this.inspectionAnswers);
 });
 
 When('I trigger execution for the created ticket', async function (this: IntegrationWorld) {
   assert.ok(this.ticketId, 'ticket id is not set');
-  this.lastResponse = await triggerExecution(this.ticketId);
+  this.lastResponse = await triggerExecution(this, this.ticketId);
 });
 
 When('I request current state for the created ticket', async function (this: IntegrationWorld) {
   assert.ok(this.ticketId, 'ticket id is not set');
-  this.lastResponse = await getTicketStatus(this.ticketId);
+  this.lastResponse = await getTicketStatus(this, this.ticketId);
+});
+
+When('I request ingestion status', async function (this: IntegrationWorld) {
+  this.lastResponse = await getIngestionStatus(this);
+});
+
+When('I request ingested platform ticket {string}', async function (this: IntegrationWorld, platformTicketId: string) {
+  this.lastResponse = await getPlatformTicket(this, platformTicketId);
 });
 
 When('I wait up to {int} seconds until ticket state is {string}', async function (this: IntegrationWorld, timeoutSec: number, targetState: string) {
@@ -75,7 +85,7 @@ When('I wait up to {int} seconds until ticket state is {string}', async function
   const start = Date.now();
 
   while (Date.now() - start < timeoutMs) {
-    const response = await getTicketStatus(this.ticketId);
+    const response = await getTicketStatus(this, this.ticketId);
     this.lastResponse = response;
 
     if (response.status === 200 && String(response.data?.state) === targetState) {
@@ -86,6 +96,30 @@ When('I wait up to {int} seconds until ticket state is {string}', async function
   }
 
   throw new Error(`ticket state did not become ${targetState} within ${timeoutSec}s`);
+});
+
+When('I wait up to {int} seconds until platform ticket {string} is ingested', async function (
+  this: IntegrationWorld,
+  timeoutSec: number,
+  platformTicketId: string
+) {
+  const timeoutMs = timeoutSec * 1000;
+  const pollMs = 1000;
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const response = await getPlatformTicket(this, platformTicketId);
+    this.lastResponse = response;
+
+    if (response.status === 200) {
+      this.ticketId = String(response.data?.ticketId || '');
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+
+  throw new Error(`platform ticket ${platformTicketId} was not ingested within ${timeoutSec}s`);
 });
 
 Then('the HTTP status should be {int}', function (this: IntegrationWorld, expectedStatus: number) {
@@ -117,6 +151,10 @@ Then('the created ticket id should be captured', function (this: IntegrationWorl
   assert.ok(this.ticketId, 'ticket id was not captured');
 });
 
-Then('MockServer should have received {string} request to {string}', async function (_this: IntegrationWorld, method: string, requestPath: string) {
-  await verifyMockRequest(method.toUpperCase(), requestPath, 1);
+Then('MockServer should have received {string} request to {string}', async function (
+  this: IntegrationWorld,
+  method: string,
+  requestPath: string
+) {
+  await verifyMockRequest(this, method.toUpperCase(), requestPath, 1);
 });

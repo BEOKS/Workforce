@@ -6,7 +6,7 @@ Feature: Worker execution with external API dependencies
 
   Scenario: Execution flow reaches mocked Confluence and GitLab APIs
     Given the SUT health endpoint is reachable
-    And OpenProject is reachable
+    And Ticket platform is reachable
     And the ticket payload:
       """
       {
