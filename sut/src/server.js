@@ -386,6 +386,11 @@ const evaluateEligibilityContract = (ticket) => {
     };
   }
 
+  const criticality = normalizeDimensionValue(dimensions.criticality, 'low');
+  const verifiability = normalizeDimensionValue(dimensions.verifiability, 'high');
+  const reversibility = normalizeDimensionValue(dimensions.reversibility, 'high');
+  const hasUnsafeTriad = criticality === 'high' && verifiability === 'low' && reversibility === 'low';
+
   const hasDefinitionOfDone = hasAnyPattern(description, [/(definition\s+of\s+done|dod)\s*:/i])
     || hasNonEmptyValue(inspectionAnswers.definition_of_done);
   const hasOutputFormat = hasAnyPattern(description, [/(output\s*format|deliverable|artifact)\s*:\s*(code|mr|doc|attachment)/i])
@@ -430,6 +435,15 @@ const evaluateEligibilityContract = (ticket) => {
     };
   }
 
+  if (hasUnsafeTriad) {
+    return {
+      is_ai_processable: true,
+      decision_confidence: 'medium',
+      reason_codes: ['NEEDS_CLARIFICATION'],
+      requires_inspection: true
+    };
+  }
+
   const highRiskFields = [
     normalizeDimensionValue(dimensions.complexity, 'low'),
     normalizeDimensionValue(dimensions.criticality, 'low'),
@@ -442,26 +456,57 @@ const evaluateEligibilityContract = (ticket) => {
     normalizeDimensionValue(dimensions._grantSignal, 'low')
   ];
 
-  const verifiability = normalizeDimensionValue(dimensions.verifiability, 'high');
-  const reversibility = normalizeDimensionValue(dimensions.reversibility, 'high');
   const monitoringMode = normalizeDimensionValue(dimensions.monitoring_mode, 'outcome');
 
-  const hasHighRiskDimension = highRiskFields.some((value) => value === 'high')
-    || constraints === 'high'
-    || verifiability === 'low'
-    || reversibility === 'low'
-    || monitoringMode === 'continuous';
+  let ruleScore = 85;
+  for (const value of highRiskFields) {
+    if (value === 'high') {
+      ruleScore -= 12;
+    }
+  }
+  if (constraints === 'high') {
+    ruleScore -= 12;
+  }
+  if (verifiability === 'low') {
+    ruleScore -= 18;
+  }
+  if (reversibility === 'low') {
+    ruleScore -= 18;
+  }
+  if (monitoringMode === 'continuous') {
+    ruleScore -= 12;
+  }
+  if (verifiability === 'low' && reversibility === 'low') {
+    ruleScore -= 8;
+  }
+  ruleScore = Math.max(0, ruleScore);
 
-  const reasonCodes = [];
-  if (hasHighRiskDimension) {
-    reasonCodes.push('NEEDS_CLARIFICATION');
+  const llmScore = ruleScore;
+  const finalScore = Math.round((0.6 * ruleScore) + (0.4 * llmScore));
+
+  if (finalScore < 60) {
+    return {
+      is_ai_processable: false,
+      decision_confidence: 'medium',
+      reason_codes: ['LOW_FEASIBILITY'],
+      requires_inspection: false
+    };
+  }
+
+  if (finalScore < 75) {
+    return {
+      is_ai_processable: true,
+      decision_confidence: 'medium',
+      reason_codes: ['NEEDS_CLARIFICATION'],
+      requires_inspection: true
+    };
   }
 
   return {
     is_ai_processable: true,
-    decision_confidence: hasHighRiskDimension ? 'medium' : 'high',
-    reason_codes: reasonCodes,
-    requires_inspection: hasHighRiskDimension
+    decision_confidence: 'high',
+    reason_codes: [],
+    requires_inspection: false
   };
 };
 

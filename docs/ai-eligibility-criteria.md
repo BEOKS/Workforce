@@ -2,159 +2,219 @@
 
 - Date: 2026-03-05
 - Scope: Multi-board MVP (GitLab/GitHub/Jira/Focalboard)
-- Goal: Decide consistently whether a ticket can enter the AI automation pipeline
-- Basis: *Intelligent AI Delegation* (Tomasev et al., arXiv:2602.11865v1, 2026)
+- Goal: Decide whether a ticket should enter AI automation
+- Basis: *Intelligent AI Delegation* (Tomašev et al., arXiv:2602.11865v1, 2026-02-12)
 
-## 1. Purpose
-This document defines the operational rules for AI eligibility decisions.
-It standardizes how we classify tickets into:
-1. AI-processable
-2. AI-processable but inspection-required
-3. Not processable (human route)
+## 1. Why This Document Exists (Macro)
+This document defines a single, defensible eligibility logic.
+The system must always answer:
+1. `is_ai_processable`: `true | false`
+2. `requires_inspection`: `true | false`
+3. `decision_confidence`: `high | medium | low`
+4. `reason_codes`: `string[]`
+
+The target is consistent routing:
+1. Process automatically
+2. Process with inspection
+3. Route to human queue
 
 Related docs:
 1. [AI Orchestration Architecture](./ai-orchestration-architecture.md)
 2. [AI Orchestration MVP Design](./ai-orchestration-mvp-design.md)
 3. [Ticket Platform Interface](./ticket-platform-interface.md)
 
-## 2. Decision Output Contract
-Every eligibility decision must return:
-1. `is_ai_processable`: `true | false`
-2. `decision_confidence`: `high | medium | low`
-3. `reason_codes`: `string[]`
-4. `requires_inspection`: `true | false`
+## 2. First Principles (Deductive Premises)
+P1. Safety precedes throughput.  
+If safety is not guaranteed, automation is blocked.
 
-## 3. Input Principle
-### 3.1 Source Signals
-Eligibility evaluation uses ticket context signals:
+P2. Eligibility must be evidence-driven.  
+Delegation dimensions are inferred from ticket context by an LLM with explicit evidence and confidence.
+
+P3. Delegation is a multi-objective optimization problem.  
+Decision quality is not a single metric; it balances success probability, safety, verification, trust cost, and delegation economics.
+
+P4. Low-confidence inference is not a free pass.  
+When confidence/evidence is insufficient, route to inspection before execution.
+
+## 3. Main Conclusion (Eligibility Theorem)
+Given P1-P4, eligibility must be decided in this order:
+1. Apply Hard Gate.
+2. If Hard Gate passed, infer delegation dimensions by LLM.
+3. Convert dimensions to objective scores.
+4. Compute `final_score`.
+5. Map score and confidence to processable/inspection/human routing.
+
+In short:
+1. Hard policy risk -> block
+2. Unclear but recoverable -> inspect
+3. Clear and sufficient -> automate
+
+## 4. Inputs and Inference Contract
+### 4.1 Input Signals
+Eligibility evaluation reads:
 1. Title, description, comments
-2. Labels/tags/custom fields (priority, risk, security, due date)
+2. Labels/tags/custom fields (priority, risk, due date, security)
 3. Attachment metadata
 4. Deliverable intent (code/MR/doc/attachment)
 5. Permission/grant metadata
 
-### 3.2 Delegation Dimensions Are Derived, Not Supplied
-Paper-aligned dimensions:
+### 4.2 Delegation Dimensions (Paper Section 2.2)
+Dimensions are inferred, not provided as authoritative input:
 1. `complexity`
 2. `criticality`
 3. `uncertainty`
-4. `cost`
-5. `resource_requirements`
-6. `constraints`
-7. `verifiability`
-8. `reversibility`
-9. `contextuality`
-10. `subjectivity`
-11. `autonomy_level`
-12. `monitoring_mode`
+4. `duration`
+5. `cost`
+6. `resource_requirements`
+7. `constraints`
+8. `verifiability`
+9. `reversibility`
+10. `contextuality`
+11. `subjectivity`
+12. `autonomy_level`
+13. `monitoring_mode`
 
-Important rule:
-1. `delegation_dimensions` is not a required external input field in production flow.
-2. The engine must infer dimensions from ticket signals.
-3. Tests should verify inference by changing ticket signals, not by injecting precomputed dimensions.
+### 4.3 LLM Inference Output Schema
+For each dimension, the LLM must return:
+1. `value` (`low | medium | high`; allowed categorical variants for `constraints`/`monitoring_mode`)
+2. `confidence` (`0.0-1.0`)
+3. `evidence` (traceable snippets or metadata refs)
 
-## 4. Decision Procedure (Fixed Order)
-1. Input validation
-2. Hard Gate
-3. Soft Gate (dimension inference + suitability scoring)
-4. Score merge
-5. Decision mapping
-6. Trace persistence (`reason_codes` + evidence)
-7. State transition after `TRIAGE_DONE`
+Global fields:
+1. `overall_confidence`
+2. `missing_information[]`
+3. `inference_notes` (observed facts vs inferred judgment)
 
-Pseudocode:
-```text
-if missing_required_fields:
-  return is_ai_processable=true, requires_inspection=true, reason=INSUFFICIENT_INPUT
+Hard requirement:
+1. Static regex/keyword rules cannot be the primary mechanism for dimension assignment.
 
-if hard_gate_blocked:
-  return is_ai_processable=false, requires_inspection=false, reason=HARD_POLICY_BLOCK
-
-dimensions = infer_dimensions(ticket_signals)
-rule_score = run_rule_scoring(ticket, dimensions)
-llm_score  = run_llm_scoring(ticket)
-final_score = 0.6 * rule_score + 0.4 * llm_score
-
-if final_score >= 75:
-  return is_ai_processable=true, requires_inspection=false
-if final_score >= 60:
-  return is_ai_processable=true, requires_inspection=true, reason=NEEDS_CLARIFICATION
-return is_ai_processable=false, requires_inspection=false, reason=LOW_FEASIBILITY
-```
-
-## 5. Hard Gate
-If any hard-gate condition is met, skip Soft Gate and block automation.
+## 5. Hard Gate (Safety Before Scoring)
+If any condition is true, skip Soft Gate and block automation.
 
 Blocking conditions:
 1. Human-only legal/regulatory authority required
-2. Privileged/high-risk production action without approved human handoff
-3. Sensitive data exposure risk without safe path
+2. Privileged production action without approved human handoff
+3. Sensitive data exposure risk without safe execution path
 4. Acceptance criteria undefined or non-measurable
 5. External dependency cannot be validated
-6. Unsafe triad: high criticality + low reversibility + low verifiability
-7. Permission scope unsafe for delegation
-8. Accountability chain missing in multi-step delegation
-9. Security anomaly detected (injection/exfiltration/suspicious request)
+6. Permission scope unsafe for delegation
+7. Accountability chain missing in multi-step delegation
+8. Security anomaly detected (injection/exfiltration/suspicious intent)
 
-Default hard-gate reason codes:
+Default reason codes:
 1. `HARD_POLICY_BLOCK`
 2. `REQUIRES_HUMAN_ONLY_AUTHORITY`
 3. `SENSITIVE_DATA_EXPOSURE_RISK`
 4. `UNDEFINED_ACCEPTANCE_CRITERIA`
-5. `LOW_VERIFIABILITY_HIGH_IMPACT`
-6. `PERMISSION_SCOPE_UNSAFE`
-7. `ACCOUNTABILITY_CHAIN_GAP`
-8. `SECURITY_ANOMALY_DETECTED`
+5. `PERMISSION_SCOPE_UNSAFE`
+6. `ACCOUNTABILITY_CHAIN_GAP`
+7. `SECURITY_ANOMALY_DETECTED`
 
-## 6. Soft Gate
-Evaluate only tickets that passed Hard Gate.
+## 6. Soft Gate (LLM + Multi-objective Scoring)
+### 6.1 Objective Construction
+Following paper Section 4.3, convert inferred dimensions into five objective scores (`0-100`):
+1. `success_likelihood`
+   - Inputs: `complexity`, `uncertainty`, `resource_requirements`, `duration`, `autonomy_level`
+2. `safety_margin`
+   - Inputs: `criticality`, `constraints`, `contextuality`
+3. `verification_strength`
+   - Inputs: `verifiability`, `monitoring_mode`
+4. `trust_efficiency`
+   - Inputs: `subjectivity`, `contextuality`, expected oversight burden, historical trust signals
+5. `delegation_economics`
+   - Inputs: `cost`, `duration`, expected delegation overhead (negotiation/monitoring/verification)
 
-### 6.1 Axes
-1. Clarity
-2. Feasibility
-3. Risk boundedness
-4. Verifiability
-5. Reversibility
-6. Context sensitivity
-7. Autonomy fit
-8. Monitoring readiness
+### 6.2 Final Score
+```text
+final_score =
+  0.30 * success_likelihood +
+  0.25 * safety_margin +
+  0.20 * verification_strength +
+  0.15 * trust_efficiency +
+  0.10 * delegation_economics
+```
 
-### 6.2 Scoring
-1. `rule_score`: 0-100
-2. `llm_score`: 0-100
-3. `final_score = 0.6 * rule_score + 0.4 * llm_score`
+Interpretation:
+1. Highest weight is probability of successful completion.
+2. Safety and verifiability remain dominant constraints.
+3. Economic efficiency matters, but never overrides safety.
 
-### 6.3 Thresholds
-1. `final_score >= 75`: AI-processable (inspection optional)
-2. `60 <= final_score < 75`: AI-processable + inspection required
-3. `final_score < 60`: not processable
+### 6.3 Confidence and Evidence Guardrail
+Even with high `final_score`, enforce inspection when:
+1. `overall_confidence < 0.55`, or
+2. `missing_information` contains critical execution unknowns
 
-## 7. Inspection Trigger Baseline
-Inspection must start when required execution context is missing/unclear.
+This is the operational equivalent of "uncertainty-aware delegation with bounded risk."
+
+### 6.4 Unsafe Triad Handling (Soft Gate)
+`criticality=high` + `verifiability=low` + `reversibility=low` is treated as a high-risk Soft Gate pattern, not an automatic Hard Gate block.
+
+Default action:
+1. `requires_inspection=true`
+2. `reason_codes` includes `NEEDS_CLARIFICATION`
+3. Human validation/approval is required before execution
+
+Escalation rule:
+1. If triad appears together with explicit policy/authority/security violation, Hard Gate takes precedence.
+
+## 7. Decision Mapping (Micro)
+### 7.1 Deterministic Mapping Order
+1. If Hard Gate blocked -> `is_ai_processable=false`, `requires_inspection=false`
+2. Else if low confidence/critical missing info -> `is_ai_processable=true`, `requires_inspection=true`, reason `NEEDS_CLARIFICATION`
+3. Else if unsafe triad and no policy violation -> `is_ai_processable=true`, `requires_inspection=true`, reason `NEEDS_CLARIFICATION`
+4. Else if `final_score < 60` -> `is_ai_processable=false`, `requires_inspection=false`, reason `LOW_FEASIBILITY`
+5. Else if `60 <= final_score < 75` -> `is_ai_processable=true`, `requires_inspection=true`, reason `NEEDS_CLARIFICATION`
+6. Else (`final_score >= 75`) -> `is_ai_processable=true`, `requires_inspection=false`
+
+### 7.2 Compact Pseudocode
+```text
+if hard_gate_blocked:
+  return false, false, high, [HARD_POLICY_BLOCK...]
+
+inference = llm_infer(ticket_signals)
+if inference.overall_confidence < 0.55 or critical_missing(inference):
+  return true, true, low_or_medium, [NEEDS_CLARIFICATION]
+
+if unsafe_triad(inference.dimensions) and not policy_violation(inference):
+  return true, true, medium, [NEEDS_CLARIFICATION]
+
+final_score = weighted_sum(inference.objective_scores)
+
+if final_score < 60:
+  return false, false, medium, [LOW_FEASIBILITY]
+if final_score < 75:
+  return true, true, medium, [NEEDS_CLARIFICATION]
+return true, false, high, []
+```
+
+## 8. Inspection Baseline
+Inspection is required when execution context is insufficient.
 
 Typical triggers:
 1. Definition of Done missing
 2. Output format unclear
 3. Allowed/prohibited system boundary unclear
 4. Priority or due date missing
-5. Soft Gate returns clarification needed (`requires_inspection=true`)
+5. Soft Gate asks clarification (`requires_inspection=true`)
 
 Minimum question set:
 1. Definition of Done (one sentence)
 2. Output format (code/MR/doc/attachment)
 3. Allowed and prohibited systems
-4. Acceptable risk + rollback criteria
-5. Priority + deadline
+4. Acceptable risk and rollback criteria
+5. Priority and deadline
 
-## 8. Decision Matrix
-| Condition | Result | Required Follow-up |
+## 9. Decision Matrix
+| Condition | Result | Follow-up |
 |---|---|---|
-| Hard Gate blocked | `is_ai_processable=false` | Route to human queue and persist blocking reasons |
+| Hard Gate blocked | `is_ai_processable=false` | Route to human queue and persist blocking evidence |
+| Hard Gate pass + low confidence / critical missing info | `is_ai_processable=true`, `requires_inspection=true` | Run inspection Q/A first |
+| Hard Gate pass + unsafe triad (no policy violation) | `is_ai_processable=true`, `requires_inspection=true` | Mandatory inspection and human validation |
 | Hard Gate pass + `final_score >= 75` | `is_ai_processable=true` | Continue orchestration flow |
 | Hard Gate pass + `60 <= final_score < 75` | `is_ai_processable=true`, `requires_inspection=true` | Run inspection Q/A |
 | Hard Gate pass + `final_score < 60` | `is_ai_processable=false` | Route to human queue |
 
-## 9. Platform Mapping and State
+## 10. Platform Mapping and State
 Common persistence markers:
 1. `ai-processable`
 2. `ai-inspection-required`
@@ -170,17 +230,18 @@ State transitions:
 2. Processable + inspection-needed: `TRIAGE_DONE -> INSPECTION_QA`
 3. Not processable: route to human queue
 
-## 10. Operational Metrics
+## 11. Operational Metrics
 1. Misclassification rate (post-review)
 2. Inspection conversion rate
 3. AI completion rate to `DONE`
 4. Escalation rate during execution
 5. Cross-platform variance
 
-## 11. Change Management
-1. Hard Gate rule changes require security owner approval
-2. Threshold changes are experiment-driven
-3. New reason codes must be synchronized across architecture/design/interface docs
+## 12. Governance
+1. Hard Gate changes require security owner approval.
+2. Scoring weight/threshold changes must be experiment-driven and versioned.
+3. New reason codes must be synchronized across architecture/design/interface docs.
+4. Prompt/schema changes for LLM inference must include regression tests.
 
-## 12. Reference
-1. Nenad Tomasev, Matija Franklin, Simon Osindero. *Intelligent AI Delegation*. arXiv:2602.11865v1, 2026-02-12.
+## 13. Reference
+1. Nenad Tomašev, Matija Franklin, Simon Osindero. *Intelligent AI Delegation*. arXiv:2602.11865v1, 2026-02-12.
