@@ -56,6 +56,257 @@
           "requester": "platform-user",
           "labels": ["polling"],
           "grant_ref_ids": ["gr_figma_read"]
+        },
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-qa",
+          "boardId": "board-alpha",
+          "ticketId": "op-elig-1001",
+          "title": "Generate team weekly report",
+          "description": "Collect metrics and produce summary",
+          "requester": "alice",
+          "labels": ["reporting"],
+          "grant_ref_ids": ["gr_reporting_read"]
+        },
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-qa",
+          "boardId": "board-alpha",
+          "ticketId": "op-insp-1001",
+          "title": "Implement API integration",
+          "description": "",
+          "requester": "bob",
+          "labels": ["integration"],
+          "grant_ref_ids": ["gr_confluence_read", "gr_gitlab_write"]
+        },
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-qa",
+          "boardId": "board-alpha",
+          "ticketId": "op-insp-1002",
+          "title": "Clarify integration requirements",
+          "description": "",
+          "requester": "frank",
+          "labels": ["inspection"],
+          "grant_ref_ids": ["gr_confluence_read"]
+        },
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-qa",
+          "boardId": "board-alpha",
+          "ticketId": "op-exec-1001",
+          "title": "Use Confluence context and create GitLab MR",
+          "description": "Read a Confluence page and create a merge request",
+          "requester": "charlie",
+          "labels": ["automation"],
+          "grant_ref_ids": ["gr_confluence_read", "gr_gitlab_mr_write"]
+        },
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-qa",
+          "boardId": "board-alpha",
+          "ticketId": "op-res-1001",
+          "title": "Test transient dependency behavior",
+          "description": "Simulate transient failures and verify terminal state",
+          "requester": "erin",
+          "labels": ["resilience"],
+          "grant_ref_ids": ["gr_figma_read"]
+        },
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-qa",
+          "boardId": "board-alpha",
+          "ticketId": "op-sec-1001",
+          "title": "Run privileged external action",
+          "description": "Requires secrets but no grant references provided",
+          "requester": "david",
+          "labels": ["security"],
+          "grant_ref_ids": []
+        }
+      ]
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/gitlab/api/v4/projects/42/issues"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "id": 12001,
+          "iid": 9201,
+          "title": "Polled from GitLab issues API",
+          "description": "Issue fetched by GitLab adapter polling",
+          "author": {
+            "username": "gitlab-bot"
+          },
+          "labels": ["polling", "gitlab"],
+          "grant_ref_ids": ["gr_gitlab_mr_write"]
+        }
+      ]
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/gitlab/api/v4/projects/99/issues"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "id": 19921,
+          "iid": 9921,
+          "title": "Polled from GitLab custom registry path",
+          "description": "Issue fetched by configured connection registry path",
+          "author": {
+            "username": "gitlab-registry-bot"
+          },
+          "labels": ["polling", "gitlab", "registry"],
+          "grant_ref_ids": ["gr_gitlab_mr_write"]
+        }
+      ]
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/github/api/v3/repos/workforce/sample/issues"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "id": 13001,
+          "number": 9301,
+          "title": "Polled from GitHub issues API",
+          "body": "Issue fetched by GitHub adapter polling",
+          "user": {
+            "login": "github-bot"
+          },
+          "labels": [
+            { "name": "polling" },
+            { "name": "github" }
+          ],
+          "grant_ref_ids": ["gr_reporting_read"]
+        }
+      ]
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/jira/rest/api/3/search"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "issues": [
+          {
+            "id": "14001",
+            "key": "WF-9401",
+            "fields": {
+              "summary": "Polled from Jira search API",
+              "description": "Issue fetched by Jira adapter polling",
+              "labels": ["polling", "jira"],
+              "reporter": {
+                "displayName": "jira-bot"
+              },
+              "customfield_grant_ref_ids": ["gr_figma_read"]
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/plane/api/v1/workspaces/workspace-qa/issues"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "id": "15001",
+          "key": "PL-9501",
+          "title": "Polled from Plane issues API",
+          "description": "Issue fetched by Plane adapter polling",
+          "creator": {
+            "name": "plane-bot"
+          },
+          "labels": [
+            { "name": "polling" },
+            { "name": "plane" }
+          ],
+          "grant_ref_ids": ["gr_reporting_read"]
+        }
+      ]
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/ticket-platform/v1/tickets/registry-a"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-registry",
+          "boardId": "board-registry",
+          "ticketId": "op-reg-2001",
+          "title": "Polled via registry path A",
+          "description": "connection registry path A response",
+          "requester": "registry-user-a",
+          "labels": ["registry", "path-a"],
+          "grant_ref_ids": ["gr_reporting_read"]
+        }
+      ]
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/ticket-platform/v1/tickets/registry-b"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": [
+        {
+          "platform": "focalboard",
+          "workspaceId": "workspace-registry",
+          "boardId": "board-registry",
+          "ticketId": "op-reg-2002",
+          "title": "Polled via registry path B",
+          "description": "connection registry path B response",
+          "requester": "registry-user-b",
+          "labels": ["registry", "path-b"],
+          "grant_ref_ids": ["gr_reporting_read"]
         }
       ]
     }

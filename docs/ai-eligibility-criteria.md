@@ -1,4 +1,4 @@
-# AI Eligibility Criteria Guide (MVP)
+# AI Eligibility Criteria Guide
 
 - Date: 2026-03-05
 - Scope: Multi-board MVP (GitLab/GitHub/Jira/Focalboard)

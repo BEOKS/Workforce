@@ -15,12 +15,6 @@ const ticketPlatform = axios.create({
   validateStatus: () => true
 });
 
-const mockServer = axios.create({
-  baseURL: config.mockServerBaseUrl,
-  timeout: config.requestTimeoutMs,
-  validateStatus: () => true
-});
-
 const recordMetric = (
   world: IntegrationWorld,
   name: string,
@@ -75,6 +69,64 @@ export const createTicket = async (world: IntegrationWorld, payload: Record<stri
   return withMetric(world, 'createTicket', 'POST', config.paths.createTicket, async () => sut.post(config.paths.createTicket, payload));
 };
 
+export const createIngesterConnection = async (
+  world: IntegrationWorld,
+  payload: Record<string, unknown>
+): Promise<AxiosResponse> => {
+  return withMetric(world, 'createIngesterConnection', 'POST', config.paths.createIngesterConnection, async () => (
+    sut.post(config.paths.createIngesterConnection, payload)
+  ));
+};
+
+export const listIngesterConnections = async (world: IntegrationWorld): Promise<AxiosResponse> => {
+  return withMetric(world, 'listIngesterConnections', 'GET', config.paths.listIngesterConnections, async () => (
+    sut.get(config.paths.listIngesterConnections)
+  ));
+};
+
+export const getIngesterConnection = async (world: IntegrationWorld, connectionId: string): Promise<AxiosResponse> => {
+  const path = replacePathParams(config.paths.getIngesterConnection, { connectionId });
+  return withMetric(world, 'getIngesterConnection', 'GET', path, async () => sut.get(path));
+};
+
+export const updateIngesterConnection = async (
+  world: IntegrationWorld,
+  connectionId: string,
+  payload: Record<string, unknown>
+): Promise<AxiosResponse> => {
+  const path = replacePathParams(config.paths.updateIngesterConnection, { connectionId });
+  return withMetric(world, 'updateIngesterConnection', 'PUT', path, async () => sut.put(path, payload));
+};
+
+export const deleteIngesterConnection = async (world: IntegrationWorld, connectionId: string): Promise<AxiosResponse> => {
+  const path = replacePathParams(config.paths.deleteIngesterConnection, { connectionId });
+  return withMetric(world, 'deleteIngesterConnection', 'DELETE', path, async () => sut.delete(path));
+};
+
+export const triggerIngesterPoll = async (world: IntegrationWorld): Promise<AxiosResponse> => {
+  return withMetric(world, 'triggerIngesterPoll', 'POST', config.paths.triggerIngesterPoll, async () => (
+    sut.post(config.paths.triggerIngesterPoll)
+  ));
+};
+
+export const getIngesterEgressAudit = async (
+  world: IntegrationWorld,
+  filters: { method?: string; path?: string; connectionId?: string } = {}
+): Promise<AxiosResponse> => {
+  return withMetric(world, 'getIngesterEgressAudit', 'GET', config.paths.getIngesterEgressAudit, async () => (
+    sut.get(config.paths.getIngesterEgressAudit, { params: filters })
+  ));
+};
+
+export const evaluateEligibility = async (
+  world: IntegrationWorld,
+  payload: Record<string, unknown>
+): Promise<AxiosResponse> => {
+  return withMetric(world, 'evaluateEligibility', 'POST', config.paths.evaluateEligibility, async () => (
+    sut.post(config.paths.evaluateEligibility, payload)
+  ));
+};
+
 export const getEligibility = async (world: IntegrationWorld, ticketId: string): Promise<AxiosResponse> => {
   const path = replacePathParams(config.paths.getEligibility, { ticketId });
   return withMetric(world, 'getEligibility', 'GET', path, async () => sut.get(path));
@@ -122,20 +174,18 @@ export const extractTicketId = (responseBody: unknown): string => {
 };
 
 export const verifyMockRequest = async (world: IntegrationWorld, method: string, path: string, atLeast = 1): Promise<void> => {
-  const verifyPath = '/mockserver/verify';
-  const response = await withMetric(world, 'verifyMockRequest', 'PUT', verifyPath, async () => (
-    mockServer.put(verifyPath, {
-      httpRequest: {
-        method,
-        path
-      },
-      times: {
-        atLeast
-      }
-    })
-  ));
+  const response = await getIngesterEgressAudit(world, { method, path });
+  if (response.status !== 200) {
+    throw new Error(`egress audit retrieval failed (${response.status}): ${JSON.stringify(response.data)}`);
+  }
 
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`mock verification failed (${response.status}): ${JSON.stringify(response.data)}`);
+  const events = Array.isArray(response.data?.events) ? response.data.events : [];
+  const matched = events.filter((event: Record<string, unknown>) => {
+    return String(event.method || '').toUpperCase() === method.toUpperCase()
+      && String(event.path || '') === path;
+  });
+
+  if (matched.length < atLeast) {
+    throw new Error(`expected at least ${atLeast} egress calls for ${method} ${path}, got ${matched.length}`);
   }
 };

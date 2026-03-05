@@ -2,18 +2,25 @@ import assert from 'node:assert';
 import { Given, Then, When } from '@cucumber/cucumber';
 import {
   createTicket,
+  createIngesterConnection,
+  deleteIngesterConnection,
+  evaluateEligibility,
   extractTicketId,
   getEligibility,
+  getIngesterConnection,
   getIngestionStatus,
+  listIngesterConnections,
   getPlatformTicket,
   getSutHealth,
   getTicketPlatformHealth,
   getTicketStatus,
   postInspectionAnswers,
+  triggerIngesterPoll,
   triggerExecution,
+  updateIngesterConnection,
   verifyMockRequest
 } from '../support/api-client';
-import { assertFieldEquals, assertFieldOneOf, assertStatus } from '../support/assertions';
+import { assertFieldEquals, assertFieldOneOf, assertStatus, getField } from '../support/assertions';
 import { validateResponseByOperation } from '../support/contract-validator';
 import type { IntegrationWorld } from '../support/world';
 
@@ -34,13 +41,95 @@ Given('the ticket payload:', function (this: IntegrationWorld, docString: string
   this.ticketPayload = JSON.parse(docString) as Record<string, unknown>;
 });
 
+Given('the connection payload:', function (this: IntegrationWorld, docString: string) {
+  this.connectionPayload = JSON.parse(docString) as Record<string, unknown>;
+});
+
 Given('the inspection answers:', function (this: IntegrationWorld, docString: string) {
   this.inspectionAnswers = JSON.parse(docString) as Record<string, string>;
+});
+
+Given('a default eligibility ticket payload', function (this: IntegrationWorld) {
+  this.ticketPayload = {
+    title: 'Standard automation task',
+    description: 'Generate summary report and attach outputs',
+    requester: 'qa-user',
+    grant_ref_ids: ['gr_reporting_read'],
+    delegation_dimensions: {
+      complexity: 'low',
+      criticality: 'low',
+      uncertainty: 'low',
+      cost: 'low',
+      resource_requirements: 'low',
+      constraints: 'low',
+      verifiability: 'high',
+      reversibility: 'high',
+      contextuality: 'low',
+      subjectivity: 'low',
+      autonomy_level: 'low',
+      monitoring_mode: 'outcome'
+    }
+  };
 });
 
 When('I submit the ticket to SUT', async function (this: IntegrationWorld) {
   assert.ok(this.ticketPayload, 'ticket payload is not set');
   this.lastResponse = await createTicket(this, this.ticketPayload);
+});
+
+When('I evaluate eligibility for the ticket payload', async function (this: IntegrationWorld) {
+  assert.ok(this.ticketPayload, 'ticket payload is not set');
+  this.lastResponse = await evaluateEligibility(this, this.ticketPayload);
+});
+
+When('I set delegation dimension {string} to {string}', function (this: IntegrationWorld, dimensionName: string, value: string) {
+  assert.ok(this.ticketPayload, 'ticket payload is not set');
+  const dimensions = (this.ticketPayload as Record<string, unknown>).delegation_dimensions;
+  assert.ok(dimensions && typeof dimensions === 'object', 'delegation_dimensions is not set');
+
+  (dimensions as Record<string, unknown>)[dimensionName] = value;
+});
+
+When('I set ticket field {string} to {string}', function (this: IntegrationWorld, fieldName: string, value: string) {
+  assert.ok(this.ticketPayload, 'ticket payload is not set');
+
+  if (value === 'null') {
+    (this.ticketPayload as Record<string, unknown>)[fieldName] = null;
+    return;
+  }
+
+  if (value === '[]') {
+    (this.ticketPayload as Record<string, unknown>)[fieldName] = [];
+    return;
+  }
+
+  (this.ticketPayload as Record<string, unknown>)[fieldName] = value;
+});
+
+When('I register ingester connection', async function (this: IntegrationWorld) {
+  assert.ok(this.connectionPayload, 'connection payload is not set');
+  this.lastResponse = await createIngesterConnection(this, this.connectionPayload);
+});
+
+When('I list ingester connections', async function (this: IntegrationWorld) {
+  this.lastResponse = await listIngesterConnections(this);
+});
+
+When('I request ingester connection {string}', async function (this: IntegrationWorld, connectionId: string) {
+  this.lastResponse = await getIngesterConnection(this, connectionId);
+});
+
+When('I update ingester connection {string}', async function (this: IntegrationWorld, connectionId: string) {
+  assert.ok(this.connectionPayload, 'connection payload is not set');
+  this.lastResponse = await updateIngesterConnection(this, connectionId, this.connectionPayload);
+});
+
+When('I delete ingester connection {string}', async function (this: IntegrationWorld, connectionId: string) {
+  this.lastResponse = await deleteIngesterConnection(this, connectionId);
+});
+
+When('I trigger ingester polling now', async function (this: IntegrationWorld) {
+  this.lastResponse = await triggerIngesterPoll(this);
 });
 
 When('I capture ticket id from response', function (this: IntegrationWorld) {
@@ -75,6 +164,10 @@ When('I request ingestion status', async function (this: IntegrationWorld) {
 
 When('I request ingested platform ticket {string}', async function (this: IntegrationWorld, platformTicketId: string) {
   this.lastResponse = await getPlatformTicket(this, platformTicketId);
+});
+
+When('I wait for {int} seconds', async function (this: IntegrationWorld, waitSec: number) {
+  await new Promise((resolve) => setTimeout(resolve, waitSec * 1000));
 });
 
 When('I wait up to {int} seconds until ticket state is {string}', async function (this: IntegrationWorld, timeoutSec: number, targetState: string) {
@@ -137,6 +230,12 @@ Then('response field {string} should equal {string}', function (this: Integratio
   assertFieldEquals(this.lastResponse.data, fieldPath, expectedValue);
 });
 
+Then('response field {string} should not equal {string}', function (this: IntegrationWorld, fieldPath: string, unexpectedValue: string) {
+  assert.ok(this.lastResponse, 'last response is not set');
+  const actual = String(getField(this.lastResponse.data, fieldPath));
+  assert.notStrictEqual(actual, unexpectedValue, `expected field ${fieldPath} to not equal ${unexpectedValue}`);
+});
+
 Then('response field {string} should be one of:', function (this: IntegrationWorld, fieldPath: string, docString: string) {
   assert.ok(this.lastResponse, 'last response is not set');
   const values = docString
@@ -147,8 +246,50 @@ Then('response field {string} should be one of:', function (this: IntegrationWor
   assertFieldOneOf(this.lastResponse.data, fieldPath, values);
 });
 
+Then('response field {string} should contain {string}', function (this: IntegrationWorld, fieldPath: string, expectedFragment: string) {
+  assert.ok(this.lastResponse, 'last response is not set');
+  const actual = String(getField(this.lastResponse.data, fieldPath));
+  assert.ok(
+    actual.includes(expectedFragment),
+    `expected field ${fieldPath} to contain ${expectedFragment}, got ${actual}`
+  );
+});
+
+Then('response array field {string} should contain {string}', function (this: IntegrationWorld, fieldPath: string, expectedValue: string) {
+  assert.ok(this.lastResponse, 'last response is not set');
+  const actual = getField(this.lastResponse.data, fieldPath);
+  assert.ok(Array.isArray(actual), `expected field ${fieldPath} to be an array`);
+  assert.ok(actual.map((value) => String(value)).includes(expectedValue), `expected array ${fieldPath} to contain ${expectedValue}`);
+});
+
 Then('the created ticket id should be captured', function (this: IntegrationWorld) {
   assert.ok(this.ticketId, 'ticket id was not captured');
+});
+
+Then('connection list should include {string}', function (this: IntegrationWorld, connectionId: string) {
+  assert.ok(this.lastResponse, 'last response is not set');
+  const connections = getField(this.lastResponse.data, 'connections');
+  assert.ok(Array.isArray(connections), 'connections is not an array');
+
+  const found = connections.some((connection) => {
+    return connection && typeof connection === 'object'
+      && String((connection as Record<string, unknown>).connectionId) === connectionId;
+  });
+
+  assert.ok(found, `expected connection list to include ${connectionId}`);
+});
+
+Then('connection list should not include {string}', function (this: IntegrationWorld, connectionId: string) {
+  assert.ok(this.lastResponse, 'last response is not set');
+  const connections = getField(this.lastResponse.data, 'connections');
+  assert.ok(Array.isArray(connections), 'connections is not an array');
+
+  const found = connections.some((connection) => {
+    return connection && typeof connection === 'object'
+      && String((connection as Record<string, unknown>).connectionId) === connectionId;
+  });
+
+  assert.ok(!found, `expected connection list to not include ${connectionId}`);
 });
 
 Then('MockServer should have received {string} request to {string}', async function (

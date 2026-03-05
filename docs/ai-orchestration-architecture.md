@@ -14,17 +14,18 @@ Platform integration contracts are standardized by [Ticket Platform Interface](.
 This system keeps human-centered ticket collaboration and automates only work that AI can safely process.
 
 Core flow:
-1. Read a ticket and [determine AI eligibility](./ai-eligibility-criteria.md).
+1. Read a ticket through the ingestion pipeline (details: [AI Ticket Ingestion Architecture](./ai-ingestion-architecture.md)) and [determine AI eligibility](./ai-eligibility-criteria.md).
 2. [If required information is missing](./ai-inspection-qa-guideline.md), the AI leader asks clarification questions and collects responses.
 3. After approval, workers execute in [sandboxed runtime](./sandbox-runtime-architecture.md), using startup prompt rules from [Worker System Prompt Contract](./worker-system-prompt-contract.md).
 4. Publish results back to the source ticket platform (comment, attachment, state update).
 
 ### 1.2 Suggested Reading Order
 1. `2. System Context`
-2. `4. End-to-End Execution Sequence`
-3. `5. Ticket State Machine`
-4. `7. Trust Boundaries and Security Zones`
-5. `3, 6, 8, 9, 10` for implementation and operations details
+2. [AI Ticket Ingestion Architecture](./ai-ingestion-architecture.md)
+3. `4. End-to-End Execution Sequence`
+4. `5. Ticket State Machine`
+5. `7. Trust Boundaries and Security Zones`
+6. `3, 6, 8, 9, 10` for implementation and operations details
 
 ### 1.3 Terms
 1. Leader Agent: controls inspection, validation, and approval requests.
@@ -59,7 +60,10 @@ flowchart LR
 Interpretation:
 1. Users interact only through their ticket platform.
 2. Worker credentials are always brokered by secret manager (see [Secret Broker Architecture](./secret-broker-architecture.md)).
-3. Results are published back to the originating platform through publisher + adapter.
+3. Ingestor reads platform updates through adapters and normalizes them before orchestration (details: [AI Ticket Ingestion Architecture](./ai-ingestion-architecture.md)).
+4. Results are published back to the originating platform through publisher + adapter.
+
+Ingestion connection settings (platform type, host/base URL, auth reference, polling/webhook mode) are managed through the Ingester Admin Console, which supports multiple platform registrations, defined in [AI Ticket Ingestion Architecture](./ai-ingestion-architecture.md).
 
 ## 3. Logical Components
 The architecture is split into four planes:
@@ -144,6 +148,8 @@ flowchart TB
 ```
 
 ## 4. End-to-End Execution Sequence
+Ingestion-specific behavior (mode selection, normalization, dedupe, and handoff checkpoints) is defined in [AI Ticket Ingestion Architecture](./ai-ingestion-architecture.md).
+
 ```mermaid
 sequenceDiagram
     autonumber

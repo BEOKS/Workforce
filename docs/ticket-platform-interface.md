@@ -2,7 +2,7 @@
 
 - Version: 1.1
 - Date: 2026-03-05
-- Scope: Adapter contract for GitLab, GitHub, Jira, and Focalboard
+- Scope: Adapter contract for GitLab, GitHub, Jira, Plane, and Focalboard
 
 ## 1. Purpose
 This interface removes platform lock-in by abstracting ticket, comment, status, and attachment operations behind a common contract.
@@ -16,7 +16,7 @@ Any new board system can be integrated by implementing an adapter without changi
 
 ## 3. Unified Domain Model
 ```ts
-export type PlatformType = 'gitlab' | 'github' | 'jira' | 'focalboard';
+export type PlatformType = 'gitlab' | 'github' | 'jira' | 'plane' | 'focalboard';
 
 export type UnifiedTicket = {
   platform: PlatformType;
@@ -147,6 +147,13 @@ export interface TicketPlatformAdapter {
 4. State: column/stage move
 5. Attachment: card attachment feature
 
+### 5.5 Plane
+1. Ticket: Issue (`workspace/project + issue_id`)
+2. Comment: Issue comments/activities
+3. Labels: labels/modules
+4. State: state/group transition
+5. Attachment: issue attachment API
+
 ## 6. Capability Fallback Rules
 1. If `supportsAttachments=false`, upload file to external storage and post link comment.
 2. If `supportsLabels=false`, use custom field or comment tags.
@@ -180,11 +187,13 @@ flowchart LR
     SPI --> GA[GitLabAdapter]
     SPI --> GHA[GitHubAdapter]
     SPI --> JA[JiraAdapter]
+    SPI --> PA[PlaneAdapter]
     SPI --> FA[FocalboardAdapter]
 
     GA --> GL[(GitLab)]
     GHA --> GH[(GitHub)]
     JA --> JR[(Jira)]
+    PA --> PL[(Plane)]
     FA --> FB[(Focalboard)]
 ```
 
@@ -192,5 +201,6 @@ flowchart LR
 1. Step 1: Interface + GitLab adapter baseline.
 2. Step 2: Add GitHub adapter.
 3. Step 3: Add Jira adapter.
-4. Step 4: Add Focalboard adapter.
-5. Step 5: Consolidate cross-platform regression tests and observability.
+4. Step 4: Add Plane adapter.
+5. Step 5: Add Focalboard adapter.
+6. Step 6: Consolidate cross-platform regression tests and observability.

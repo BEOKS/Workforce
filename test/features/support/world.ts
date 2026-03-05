@@ -20,6 +20,7 @@ export type ScenarioPerf = {
 export class IntegrationWorld extends World {
   public lastResponse?: AxiosResponse;
   public ticketPayload?: Record<string, unknown>;
+  public connectionPayload?: Record<string, unknown>;
   public inspectionAnswers?: Record<string, string>;
   public ticketId?: string;
   public scenarioPerf: ScenarioPerf = {};
@@ -28,6 +29,7 @@ export class IntegrationWorld extends World {
   resetState(): void {
     this.lastResponse = undefined;
     this.ticketPayload = undefined;
+    this.connectionPayload = undefined;
     this.inspectionAnswers = undefined;
     this.ticketId = undefined;
     this.scenarioPerf = {};

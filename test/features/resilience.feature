@@ -6,20 +6,10 @@ Feature: Resilience under transient failures
 
   Scenario: Ticket state eventually reaches a terminal policy state
     Given the SUT health endpoint is reachable
-    And the ticket payload:
-      """
-      {
-        "title": "Test transient dependency behavior",
-        "description": "Simulate transient failures and verify terminal state",
-        "requester": "erin",
-        "labels": ["resilience"],
-        "grant_ref_ids": ["gr_figma_read"]
-      }
-      """
-    When I submit the ticket to SUT
-    Then the HTTP status should be 201
-    And the response should match OpenAPI operation "createTicket" with status 201
-    When I capture ticket id from response
+    When I wait up to 15 seconds until platform ticket "op-res-1001" is ingested
+    Then the HTTP status should be 200
+    And the response should match OpenAPI operation "getPlatformTicket" with status 200
+    And response field "platformTicketId" should equal "op-res-1001"
     And I trigger execution for the created ticket
     Then the HTTP status should be 202
     And the response should match OpenAPI operation "triggerExecution" with status 202
