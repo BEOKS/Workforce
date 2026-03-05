@@ -580,7 +580,7 @@ components:
 
     EvaluateEligibilityRequest:
       type: object
-      required: [title, description, requester, delegation_dimensions]
+      required: [title, description, requester]
       properties:
         title:
           type: string
@@ -589,6 +589,10 @@ components:
         requester:
           type: string
         grant_ref_ids:
+          type: array
+          items:
+            type: string
+        labels:
           type: array
           items:
             type: string

@@ -149,24 +149,10 @@ Feature: Inspection Q/A loop for missing information
       """
       {
         "title": "Inspection condition - eligibility requires inspection",
-        "description": "Definition of Done: merged MR with tests\nOutput format: code\nAllowed systems: github\nProhibited systems: production-db\nPriority: high\nDue date: 2026-03-20",
+        "description": "Definition of Done: merged MR with tests\nOutput format: code\nAllowed systems: github\nProhibited systems: production-db\nPriority: high\nDue date: 2026-03-20\nComplex multi-step cross-service migration is required.",
         "requester": "qa-user",
         "labels": ["priority:high", "due:2026-03-20"],
-        "grant_ref_ids": ["gr_gitlab_mr_write"],
-        "delegation_dimensions": {
-          "complexity": "high",
-          "criticality": "low",
-          "uncertainty": "medium",
-          "cost": "low",
-          "resource_requirements": "low",
-          "constraints": "low",
-          "verifiability": "high",
-          "reversibility": "high",
-          "contextuality": "medium",
-          "subjectivity": "low",
-          "autonomy_level": "low",
-          "monitoring_mode": "outcome"
-        }
+        "grant_ref_ids": ["gr_gitlab_mr_write"]
       }
       """
     When I submit the ticket to SUT

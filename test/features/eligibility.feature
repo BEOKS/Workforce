@@ -24,7 +24,7 @@ Feature: Eligibility decision for all incoming tickets
   Scenario Outline: Hard Gate blocks risky tickets
     Given the SUT health endpoint is reachable
     And a default eligibility ticket payload
-    When I set delegation dimension "constraints" to "<constraints>"
+    When I apply risk signal "<signal>" to the ticket payload
     And I evaluate eligibility for the ticket payload
     Then the HTTP status should be 200
     And the response should match OpenAPI operation "evaluateEligibility" with status 200
@@ -34,9 +34,9 @@ Feature: Eligibility decision for all incoming tickets
     And response field "reason_codes" should contain "HARD_POLICY_BLOCK"
 
     Examples:
-      | constraints |
-      | legal |
-      | human_only |
+      | signal |
+      | legal_constraint |
+      | human_only_authority |
 
   Scenario: Hard Gate blocks privileged ticket when grant refs are missing
     Given the SUT health endpoint is reachable
@@ -61,10 +61,10 @@ Feature: Eligibility decision for all incoming tickets
     And response field "decision_confidence" should equal "high"
     And response field "requires_inspection" should equal "false"
 
-  Scenario Outline: Soft Gate requires inspection for high-risk delegation dimensions
+  Scenario Outline: Soft Gate requires inspection for high-risk inferred dimensions
     Given the SUT health endpoint is reachable
     And a default eligibility ticket payload
-    When I set delegation dimension "<dimension>" to "<value>"
+    When I apply risk signal "<signal>" to the ticket payload
     And I evaluate eligibility for the ticket payload
     Then the HTTP status should be 200
     And the response should match OpenAPI operation "evaluateEligibility" with status 200
@@ -74,16 +74,16 @@ Feature: Eligibility decision for all incoming tickets
     And response field "reason_codes" should contain "NEEDS_CLARIFICATION"
 
     Examples:
-      | dimension | value |
-      | complexity | high |
-      | criticality | high |
-      | uncertainty | high |
-      | cost | high |
-      | resource_requirements | high |
-      | constraints | high |
-      | verifiability | low |
-      | reversibility | low |
-      | contextuality | high |
-      | subjectivity | high |
-      | autonomy_level | high |
-      | monitoring_mode | continuous |
+      | signal |
+      | complexity_high |
+      | criticality_high |
+      | uncertainty_high |
+      | cost_high |
+      | resource_requirements_high |
+      | constraints_high |
+      | verifiability_low |
+      | reversibility_low |
+      | contextuality_high |
+      | subjectivity_high |
+      | autonomy_level_high |
+      | monitoring_mode_continuous |

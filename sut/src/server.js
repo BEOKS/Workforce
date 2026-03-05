@@ -323,6 +323,41 @@ const hasAnyPattern = (value, patterns) => {
 
 const hasNonEmptyValue = (value) => String(value || '').trim().length > 0;
 
+const deriveDelegationDimensionsFromSignals = (ticket) => {
+  const title = String(ticket.title || '');
+  const description = String(ticket.description || '');
+  const labels = Array.isArray(ticket.labels) ? ticket.labels.map((label) => String(label)) : [];
+  const grants = Array.isArray(ticket.grant_ref_ids) ? ticket.grant_ref_ids.map((grant) => String(grant)) : [];
+  const joinedSignals = `${title}\n${description}\n${labels.join('\n')}`.toLowerCase();
+
+  const has = (pattern) => pattern.test(joinedSignals);
+
+  const constraints = has(/\bhuman[-\s]?only\b/) ? 'human_only'
+    : has(/\blegal\b|\bregulatory\b|\bcompliance\b/) ? 'legal'
+      : has(/\bpolicy\b|\brestricted\b/) ? 'high'
+        : 'low';
+
+  const monitoring_mode = has(/\bcontinuous monitoring\b|\breal[-\s]?time\b|\b24\/7\b/) ? 'continuous'
+    : has(/\bcheckpoint\b|\bprocess monitor(ing)?\b/) ? 'process'
+      : 'outcome';
+
+  return {
+    complexity: has(/\bcomplex\b|\bmulti[-\s]?step\b|\bcross[-\s]?service\b|\bmigration\b/) ? 'high' : 'low',
+    criticality: has(/\bproduction\b|\bcritical\b|\bp0\b|\bp1\b|\bcustomer impact\b/) ? 'high' : 'low',
+    uncertainty: has(/\bunclear\b|\bunknown\b|\btbd\b|\binvestigate\b|\bexplore\b/) ? 'high' : 'low',
+    cost: has(/\bhigh effort\b|\bexpensive\b|\bweeks?\b|\bmonths?\b/) ? 'high' : 'low',
+    resource_requirements: has(/\bdb admin\b|\bcluster access\b|\bmultiple teams?\b|\boncall\b/) ? 'high' : 'low',
+    constraints,
+    verifiability: has(/\bsubjective\b|\bcannot test\b|\bno tests?\b|\bmanual judgment\b/) ? 'low' : 'high',
+    reversibility: has(/\birreversible\b|\bcannot rollback\b|\bdata loss\b/) ? 'low' : 'high',
+    contextuality: has(/\bpii\b|\bconfidential\b|\bsensitive\b|\binternal only\b/) ? 'high' : 'low',
+    subjectivity: has(/\baesthetic\b|\bopinion\b|\bpreference\b/) ? 'high' : 'low',
+    autonomy_level: has(/\bfully automatic\b|\bautonomous\b|\bwithout approval\b/) ? 'high' : 'low',
+    monitoring_mode,
+    _grantSignal: grants.some((grant) => grant.toLowerCase().includes('admin')) ? 'high' : 'low'
+  };
+};
+
 const evaluateEligibilityContract = (ticket) => {
   const title = String(ticket.title || '').toLowerCase();
   const description = String(ticket.description || '').trim();
@@ -330,9 +365,7 @@ const evaluateEligibilityContract = (ticket) => {
   const inspectionAnswers = ticket.inspectionAnswers && typeof ticket.inspectionAnswers === 'object'
     ? ticket.inspectionAnswers
     : {};
-  const dimensions = ticket.delegation_dimensions && typeof ticket.delegation_dimensions === 'object'
-    ? ticket.delegation_dimensions
-    : {};
+  const dimensions = deriveDelegationDimensionsFromSignals(ticket);
 
   if (title.includes('privileged') && (!Array.isArray(ticket.grant_ref_ids) || ticket.grant_ref_ids.length === 0)) {
     return {
@@ -405,7 +438,8 @@ const evaluateEligibilityContract = (ticket) => {
     normalizeDimensionValue(dimensions.resource_requirements, 'low'),
     normalizeDimensionValue(dimensions.contextuality, 'low'),
     normalizeDimensionValue(dimensions.subjectivity, 'low'),
-    normalizeDimensionValue(dimensions.autonomy_level, 'low')
+    normalizeDimensionValue(dimensions.autonomy_level, 'low'),
+    normalizeDimensionValue(dimensions._grantSignal, 'low')
   ];
 
   const verifiability = normalizeDimensionValue(dimensions.verifiability, 'high');
@@ -1011,14 +1045,10 @@ app.post('/v1/eligibility/evaluate', (req, res) => {
     return res.status(400).json(toError('BAD_REQUEST', 'ticket payload is required'));
   }
 
-  const { title, requester, delegation_dimensions } = payload;
+  const { title, requester } = payload;
 
   if (!title || !requester) {
     return res.status(400).json(toError('BAD_REQUEST', 'title and requester are required'));
-  }
-
-  if (!delegation_dimensions || typeof delegation_dimensions !== 'object') {
-    return res.status(400).json(toError('BAD_REQUEST', 'delegation_dimensions object is required'));
   }
 
   return res.status(200).json(evaluateEligibilityContract(payload));
