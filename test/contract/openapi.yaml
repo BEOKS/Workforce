@@ -1,0 +1,238 @@
+openapi: 3.0.3
+info:
+  title: Workforce SUT Integration Contract
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /healthz:
+    get:
+      operationId: getHealth
+      responses:
+        '200':
+          description: SUT health check
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /v1/tickets:
+    post:
+      operationId: createTicket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketRequest'
+      responses:
+        '201':
+          description: Ticket created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTicketResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/tickets/{ticketId}/eligibility:
+    get:
+      operationId: getEligibility
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Eligibility response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EligibilityResponse'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/tickets/{ticketId}/inspection/answers:
+    post:
+      operationId: postInspectionAnswer
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InspectionAnswerRequest'
+      responses:
+        '200':
+          description: Inspection answer accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InspectionAnswerResponse'
+        '409':
+          description: Invalid state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/tickets/{ticketId}/execute:
+    post:
+      operationId: triggerExecution
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Execution accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExecutionAcceptedResponse'
+        '403':
+          description: Forbidden by policy/approval/grants
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/tickets/{ticketId}/status:
+    get:
+      operationId: getTicketStatus
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TicketStatusResponse'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+
+    CreateTicketRequest:
+      type: object
+      required: [title, description, requester]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        requester:
+          type: string
+        labels:
+          type: array
+          items:
+            type: string
+        grant_ref_ids:
+          type: array
+          items:
+            type: string
+
+    CreateTicketResponse:
+      type: object
+      required: [ticketId]
+      properties:
+        ticketId:
+          type: string
+
+    EligibilityResponse:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [ai_processable, requires_inspection, not_processable]
+        reasonCodes:
+          type: array
+          items:
+            type: string
+
+    InspectionAnswerRequest:
+      type: object
+      required: [answers]
+      properties:
+        answers:
+          type: object
+          additionalProperties:
+            type: string
+
+    InspectionAnswerResponse:
+      type: object
+      required: [accepted]
+      properties:
+        accepted:
+          type: boolean
+
+    ExecutionAcceptedResponse:
+      type: object
+      required: [accepted, executionId]
+      properties:
+        accepted:
+          type: boolean
+        executionId:
+          type: string
+
+    TicketStatusResponse:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum:
+            - NEW
+            - TRIAGE_PENDING
+            - TRIAGE_DONE
+            - INSPECTION_QA
+            - INSPECTION_APPROVAL
+            - READY_TO_ASSIGN
+            - DECOMPOSING
+            - QUEUED
+            - RUNNING
+            - RETRYING
+            - ESCALATED
+            - DONE
+        updatedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string

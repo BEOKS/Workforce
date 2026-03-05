@@ -1,0 +1,75 @@
+[
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/gitlab/api/v4/projects/42"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "id": 42,
+        "name": "workforce-sample"
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "POST",
+      "path": "/gitlab/api/v4/projects/42/merge_requests"
+    },
+    "httpResponse": {
+      "statusCode": 201,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "iid": 501,
+        "title": "AI-generated MR",
+        "web_url": "https://gitlab.example.local/project/42/-/merge_requests/501"
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/confluence/wiki/api/v2/pages/123"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "id": "123",
+        "title": "Architecture Spec",
+        "body": {
+          "storage": {
+            "value": "<p>Mock confluence page</p>"
+          }
+        }
+      }
+    }
+  },
+  {
+    "httpRequest": {
+      "method": "GET",
+      "path": "/figma/v1/files/abc123"
+    },
+    "httpResponse": {
+      "statusCode": 200,
+      "headers": {
+        "Content-Type": ["application/json"]
+      },
+      "body": {
+        "name": "Mock Figma File",
+        "document": {
+          "id": "0:1",
+          "name": "Root"
+        }
+      }
+    }
+  }
+]
