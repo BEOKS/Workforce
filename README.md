@@ -79,6 +79,14 @@ Environment variables are also supported:
 - `CODEX_ALLOWED_API_HOSTS`
 - `JIRA_STATE_FILE`
 
+Register the runner as a macOS background agent with env capture from `.env` plus the current shell:
+
+```bash
+python3 scripts/register_jira_codex_launch_agent.py
+```
+
+This writes the launchd plist, snapshots the current shell's relevant API/token env vars into `.runtime/jira-codex-ticket-runner.launchd-env.json`, and restarts the agent.
+
 ## Project knowledge accumulation
 
 The Jira runner now keeps a per-project knowledge store under `.runtime/jira-project-knowledge/`.

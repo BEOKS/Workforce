@@ -112,7 +112,7 @@ def env_flag(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def load_dotenv(path: Path) -> None:
+def load_dotenv(path: Path, *, override: bool = False) -> None:
     if not path.exists():
         return
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -130,7 +130,8 @@ def load_dotenv(path: Path) -> None:
             continue
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
             value = value[1:-1]
-        os.environ.setdefault(key, value)
+        if override or key not in os.environ:
+            os.environ[key] = value
 
 
 def setup_logging(verbose: bool, log_file: Path) -> None:
