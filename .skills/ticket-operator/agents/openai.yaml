@@ -1,0 +1,3 @@
+interface:
+  display_name: "Ticket Operator"
+  short_description: "Run ticket triage, planning, execution, and reporting with Codex"

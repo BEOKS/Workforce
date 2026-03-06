@@ -1,5 +1,9 @@
 # Test workspace artifacts
+.env
+__pycache__/
+*.pyc
 test/node_modules/
 test/.env
 sut/.env
 test/reports/
+.runtime/

@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitLab Env Operator"
+  short_description: "GitLab 프로젝트/이슈/MR 자동화"
+  default_prompt: "Use $gitlab-env-operator to inspect GitLab projects, issues, merge requests, and repository workflows from .env."

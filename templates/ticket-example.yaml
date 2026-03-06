@@ -1,0 +1,37 @@
+id: WF-1042
+source:
+  system: jira
+  url: https://example.local/browse/WF-1042
+title: Generate monthly cost report and open remediation MR
+summary: Build the report, update the dashboard, and propose fixes for overspend.
+status: triage
+labels:
+  - ai-candidate
+  - finops
+acceptance_criteria:
+  - spreadsheet uploaded to the ticket
+  - dashboard numbers updated
+  - remediation MR opened
+knowledge_hints:
+  skills:
+    - ticket-operator
+    - finops-reporting
+  confluence_queries:
+    - monthly cost report template
+    - cost anomaly remediation guide
+permissions:
+  git:
+    repo: org/finops
+    access: write
+  confluence:
+    spaces:
+      - FINOPS
+    access: read
+  storage:
+    location: s3://team-artifacts/finops/
+    access: write
+approval:
+  required: true
+  reviewers:
+    - team-lead
+artifacts: []

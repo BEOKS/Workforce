@@ -1,0 +1,4 @@
+interface:
+  display_name: "Confluence Page Editor"
+  short_description: "Confluence 페이지 검색/조회/생성/수정"
+  default_prompt: "Use $confluence-page-editor to search Confluence with CQL and create or update pages in storage HTML."
