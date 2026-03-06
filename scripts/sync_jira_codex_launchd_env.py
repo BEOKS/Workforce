@@ -22,17 +22,23 @@ PREFIXES = (
     "SLACK_",
 )
 EXACT_NAMES = (
+    "ALL_PROXY",
+    "CURL_CA_BUNDLE",
     "HOME",
+    "PATH",
     "LANG",
     "LC_ALL",
     "LC_CTYPE",
     "NO_PROXY",
     "HTTPS_PROXY",
     "HTTP_PROXY",
+    "PYTHONPATH",
     "REQUESTS_CA_BUNDLE",
+    "RES_OPTIONS",
     "SSL_CERT_FILE",
     "SSL_CERT_DIR",
     "SSH_AUTH_SOCK",
+    "TMPDIR",
 )
 
 

@@ -32,7 +32,30 @@ This repository contains a Codex-based operating model for handling ticket-drive
 
 ## Jira runner
 
-Run the Jira poller with Jira Cloud credentials and a target workspace for Codex:
+There are three entry points:
+
+- `scripts/jira_codex_ticket_runner.py`
+  - core runner process
+- `scripts/launch_jira_codex_ticket_runner.py`
+  - manual wrapper that loads `.env` and the saved launchd env snapshot, then starts the core runner
+- `scripts/register_jira_codex_launch_agent.py`
+  - recommended macOS background entry point; refreshes env snapshot, rewrites the LaunchAgent plist, and restarts the service
+
+Recommended manual foreground run:
+
+```bash
+python3 scripts/launch_jira_codex_ticket_runner.py
+```
+
+Recommended macOS background registration/run:
+
+```bash
+python3 scripts/register_jira_codex_launch_agent.py
+```
+
+Use `register_jira_codex_launch_agent.py` whenever API keys, tokens, proxy/certificate variables, or PATH-related tooling changed in your shell. It refreshes `.runtime/jira-codex-ticket-runner.launchd-env.json` and restarts the background service with those values.
+
+If you need to run the core runner directly with explicit CLI arguments, use:
 
 ```bash
 python3 scripts/jira_codex_ticket_runner.py \
@@ -57,6 +80,8 @@ Useful flags:
   - fetch matching issues once, process the queue, and exit
 - `--codex-global-arg=--search`
   - allow Codex web search during execution
+- `--codex-network-access`
+  - allow nested Codex shell commands to reach external hosts such as GitLab/Confluence while staying in `workspace-write`
 
 When the nested Codex run truly needs extra external API access, define additional allowed hosts with `CODEX_ALLOWED_API_HOSTS`. The runner also auto-adds the hosts from `CONFLUENCE_BASE_URL` and `GITLAB_BASE_URL` to the child allowlist that is embedded in the prompt.
 
@@ -76,16 +101,22 @@ Environment variables are also supported:
 - `CODEX_SANDBOX`
 - `CODEX_GLOBAL_ARGS`
 - `CODEX_EXEC_ARGS`
+- `CODEX_SANDBOX_NETWORK_ACCESS`
 - `CODEX_ALLOWED_API_HOSTS`
 - `JIRA_STATE_FILE`
 
-Register the runner as a macOS background agent with env capture from `.env` plus the current shell:
+Background service status:
 
 ```bash
-python3 scripts/register_jira_codex_launch_agent.py
+python3 scripts/register_jira_codex_launch_agent.py --status-only
 ```
 
-This writes the launchd plist, snapshots the current shell's relevant API/token env vars into `.runtime/jira-codex-ticket-runner.launchd-env.json`, and restarts the agent.
+Notes:
+
+- `launch_jira_codex_ticket_runner.py` is fine for foreground/manual execution, but it does not refresh the saved launchd env snapshot by itself.
+- `register_jira_codex_launch_agent.py` is the correct command for background operation on macOS.
+- The runner pins nested helper calls that use `python3` to the configured `JIRA_CODEX_PYTHON` runtime via `.runtime/bin/python3`, so background and nested runs stay on the same Python version.
+- When nested Codex needs GitLab access, prefer full GitLab project/repository URLs in command arguments instead of `group/project` or remote aliases like `origin`. That keeps the target host explicit for the sandboxed network path.
 
 ## Project knowledge accumulation
 
